@@ -18,6 +18,9 @@ const videoUrl =
 const pdfUrl =
     "https://github.com/seventhcomputing/video-snap/raw/master/sample.pdf";
 
+const pptxUrl =
+    "https://github.com/seventhcomputing/video-snap/raw/master/samplepptx.pptx";
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   RealmConfig().initialize();
@@ -120,6 +123,29 @@ class MyHomepage extends StatelessWidget {
                 }
               },
               child: const Text("Open PDF")),
+          const MyDownloadPage(
+            pptxUrl,
+            downloadFileName: "samplepptx.pptx",
+          ),
+          ElevatedButton(
+              onPressed: () async {
+                try {
+                  if (await Permission.manageExternalStorage
+                      .request()
+                      .isGranted) {
+                    final appDocumentsDirectory =
+                        await getApplicationDocumentsDirectory();
+                    final decryptPath =
+                        '${appDocumentsDirectory.path}/samplepptx.pptx';
+                    final result = await OpenFile.open(decryptPath);
+                    print('result => ${result.type}');
+                    print('result => ${result.message}');
+                  }
+                } catch (e) {
+                  print("open file error => $e");
+                }
+              },
+              child: const Text("Open Power Point")),
         ],
       ),
     );
