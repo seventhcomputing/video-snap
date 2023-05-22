@@ -27,8 +27,8 @@ class VideoUtil {
           .bytes;
 
       outputFile.writeAsBytesSync(encryptedBytes);
-      inputFile.deleteSync();
-      insertVideoData(outputFile.path);
+      // inputFile.deleteSync();
+      // insertVideoData(outputFile.path);
     } catch (e) {
       print("error => $e");
     }
@@ -88,6 +88,19 @@ class VideoUtil {
   }
 
   File decryptVideoFile(
+    File inputFile,
+    File outputFile,
+  ) {
+    final encrypter = Encrypter(AES(encryptionKey));
+    final inputFileBytes = inputFile.readAsBytesSync();
+    final decryptedBytes = encrypter.decryptBytes(Encrypted(inputFileBytes),
+        iv: initializationVector);
+    outputFile.writeAsBytesSync(decryptedBytes);
+
+    return outputFile;
+  }
+
+  File decryptFile(
     File inputFile,
     File outputFile,
   ) {

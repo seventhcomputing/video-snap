@@ -1,8 +1,10 @@
 import 'dart:io';
 
+import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:realm/realm.dart';
 import 'package:video_snap/video_util.dart';
 
@@ -12,6 +14,9 @@ import 'schema/video.dart';
 
 const videoUrl =
     'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4';
+
+const pdfUrl =
+    "https://github.com/seventhcomputing/video-snap/raw/master/sample.pdf";
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,12 +42,13 @@ class MyHomepage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Download Video")),
+      appBar: AppBar(title: const Text("Download")),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const MyDownloadPage(
-            videoUrl: videoUrl,
+            videoUrl,
+            downloadFileName: "butterfly.mp4",
           ),
           ElevatedButton(
               onPressed: () async {
@@ -90,7 +96,30 @@ class MyHomepage extends StatelessWidget {
                 VideoUtil().decryptVideoFileP(
                     File(encryptVideoPath), File(decryptVideoPath));
               },
-              child: const Text("Decrypt With Progress"))
+              child: const Text("Decrypt With Progress")),
+          const MyDownloadPage(
+            pdfUrl,
+            downloadFileName: "sample.pdf",
+          ),
+          ElevatedButton(
+              onPressed: () async {
+                try {
+                  if (await Permission.manageExternalStorage
+                      .request()
+                      .isGranted) {
+                    final appDocumentsDirectory =
+                        await getApplicationDocumentsDirectory();
+                    final decryptPath =
+                        '${appDocumentsDirectory.path}/sample.pdf';
+                    final result = await OpenFile.open(decryptPath);
+                    print('result => ${result.type}');
+                    print('result => ${result.message}');
+                  }
+                } catch (e) {
+                  print("open file error => $e");
+                }
+              },
+              child: const Text("Open PDF")),
         ],
       ),
     );
@@ -98,20 +127,25 @@ class MyHomepage extends StatelessWidget {
 }
 
 class MyDownloadPage extends StatelessWidget {
-  const MyDownloadPage({super.key, required this.videoUrl});
+  const MyDownloadPage(this.url, {super.key, required this.downloadFileName});
 
-  final videoUrl;
+  final url;
+  final downloadFileName;
+
   @override
   Widget build(BuildContext context) {
     return Center(
       child: ElevatedButton(
-        child: const Text('Download'),
+        child: Text('Download - $downloadFileName'),
         onPressed: () {
           showDialog(
             context: context,
             barrierDismissible: false,
             builder: (BuildContext context) {
-              return DownloadDialog(url: videoUrl);
+              return DownloadDialog(
+                url,
+                downloadFileName: downloadFileName,
+              );
             },
           );
         },
@@ -122,8 +156,9 @@ class MyDownloadPage extends StatelessWidget {
 
 class DownloadDialog extends StatefulWidget {
   final String url;
+  final String downloadFileName;
 
-  const DownloadDialog({super.key, required this.url});
+  const DownloadDialog(this.url, {super.key, required this.downloadFileName});
 
   @override
   _DownloadDialogState createState() => _DownloadDialogState();
@@ -135,15 +170,15 @@ class _DownloadDialogState extends State<DownloadDialog> {
   @override
   void initState() {
     super.initState();
-    downloadVideo(widget.url);
+    downloadVideo(widget.url, downloadFileName: widget.downloadFileName);
   }
 
-  void downloadVideo(String url) async {
+  void downloadVideo(String url, {required String downloadFileName}) async {
     final dio = Dio();
     final appDocumentsDirectory = await getApplicationDocumentsDirectory();
-    final savePath = '${appDocumentsDirectory.path}/butterfly.mp4';
+    final savePath = '${appDocumentsDirectory.path}/$downloadFileName';
     final saveOutputPath =
-        '${appDocumentsDirectory.path}/encrypt-butterfly.mp4';
+        '${appDocumentsDirectory.path}/encrypt-$downloadFileName';
     try {
       await dio.download(
         url,
@@ -170,6 +205,7 @@ class _DownloadDialogState extends State<DownloadDialog> {
 
   @override
   Widget build(BuildContext context) {
+    print("progress => $progress");
     return AlertDialog(
       title: const Text('Downloading...'),
       content: Column(
