@@ -1,16 +1,23 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:pdf_render/pdf_render_widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:realm/realm.dart';
+import 'package:video_snap/file_render_view.dart';
+
 import 'package:video_snap/video_util.dart';
+import 'package:video_snap/video_view.dart';
 
 import 'config/realm_config.dart';
 import 'repository/video_repository.dart';
 import 'schema/video.dart';
+
+import 'package:pdf/widgets.dart' as pw;
 
 const videoUrl =
     'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4';
@@ -24,7 +31,6 @@ const pptxUrl =
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   RealmConfig().initialize();
-
   runApp(const MyApp());
 }
 
@@ -75,17 +81,17 @@ class MyHomepage extends StatelessWidget {
                   print("videoFilePath => $videoFilePath");
                 }
 
-                // final appDocumentsDirectory =
-                //     await getApplicationDocumentsDirectory();
+                final appDocumentsDirectory =
+                    await getApplicationDocumentsDirectory();
 
-                // final decryptVideoPath =
-                //     '${appDocumentsDirectory.path}/decrypt-butterfly.mp4';
-                // final encryptVideoPath =
-                //     '${appDocumentsDirectory.path}/encrypt-butterfly.mp4';
-                // File decryptedVideoFile = VideoUtil().decryptVideoFile(
-                //     File(encryptVideoPath), File(decryptVideoPath));
-                // Navigator.of(context).push(MaterialPageRoute(
-                //     builder: (context) => VideoView(decryptedVideoFile)));
+                final decryptVideoPath =
+                    '${appDocumentsDirectory.path}/decrypt-butterfly.mp4';
+                final encryptVideoPath =
+                    '${appDocumentsDirectory.path}/encrypt-butterfly.mp4';
+                File decryptedVideoFile = VideoUtil().decryptVideoFile(
+                    File(encryptVideoPath), File(decryptVideoPath));
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => VideoView(decryptedVideoFile)));
               },
               child: const Text("Play Video")),
           ElevatedButton(
@@ -114,9 +120,13 @@ class MyHomepage extends StatelessWidget {
                         await getApplicationDocumentsDirectory();
                     final decryptPath =
                         '${appDocumentsDirectory.path}/sample.pdf';
-                    final result = await OpenFile.open(decryptPath);
-                    print('result => ${result.type}');
-                    print('result => ${result.message}');
+
+                    // final result = await OpenFile.open(decryptPath);
+                    // print('result => ${result.type}');
+                    // print('result => ${result.message}');
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) {
+                      return PDFViewerPage(decryptPath);
+                    }));
                   }
                 } catch (e) {
                   print("open file error => $e");
@@ -135,11 +145,20 @@ class MyHomepage extends StatelessWidget {
                       .isGranted) {
                     final appDocumentsDirectory =
                         await getApplicationDocumentsDirectory();
+                    // final decryptPath =
+                    //     '${appDocumentsDirectory.path}/samplepptx.pptx';
                     final decryptPath =
-                        '${appDocumentsDirectory.path}/samplepptx.pptx';
-                    final result = await OpenFile.open(decryptPath);
-                    print('result => ${result.type}');
-                    print('result => ${result.message}');
+                        '${appDocumentsDirectory.path}/sample.pdf';
+                    // await convertPPTXtoPDF(decryptPath);
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) {
+                      return FileReaderPage(filePath: decryptPath);
+                    }));
+                    // Navigator.of(context).push(MaterialPageRoute(builder: (_) {
+                    //   return PowerPointViewerPage(pptPath: decryptPath);
+                    // }));
+                    // final result = await OpenFile.open(decryptPath);
+                    // print('result => ${result.type}');
+                    // print('result => ${result.message}');
                   }
                 } catch (e) {
                   print("open file error => $e");
@@ -149,6 +168,26 @@ class MyHomepage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> convertPPTXtoPDF(String pptxFilePath) async {
+    final ByteData image = await rootBundle.load('assets/sampleImage.png');
+    Uint8List imageData = (image).buffer.asUint8List();
+    final pdf = pw.Document();
+
+    // // Create PDF page from PPTX bytes
+
+    final pptxImage = pw.MemoryImage(imageData);
+
+    pdf.addPage(pw.Page(build: (pw.Context context) {
+      return pw.Image(pptxImage);
+    }));
+
+    final output = await getApplicationDocumentsDirectory();
+    final file = File("${output.path}/convert.pdf");
+    await file.writeAsBytes(await pdf.save());
+
+    OpenFile.open(file.path);
   }
 }
 
@@ -245,5 +284,25 @@ class _DownloadDialogState extends State<DownloadDialog> {
         ],
       ),
     );
+  }
+}
+
+class PDFViewerPage extends StatelessWidget {
+  PDFViewerPage(
+    this.path, {
+    super.key,
+  });
+
+  late String path;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+        home: Scaffold(
+            appBar: AppBar(
+              title: const Text('Easiest PDF sample'),
+            ),
+            backgroundColor: Colors.grey,
+            body: PdfViewer.openFile(path)));
   }
 }
